@@ -1,0 +1,77 @@
+name: סיכום שוק יומי לדיסקורד
+
+on:
+  schedule:
+    # GitHub עובד לפי UTC. שתי השורות מכסות שעון קיץ ושעון חורף בישראל.
+    # שתיהן מתעוררות ב-16:30 שעון ישראל, והסקריפט ממתין ושולח בדיוק ב-17:00.
+    # (אם משנים כאן – לשנות גם CRON_SUMMER / CRON_WINTER ב-market_bot.py)
+    - cron: "30 13 * * 1-5"   # שעון קיץ בישראל (UTC+3)
+    - cron: "30 14 * * 1-5"   # שעון חורף בישראל (UTC+2)
+  workflow_dispatch:          # כפתור "Run workflow" להרצה ידנית ובדיקה
+
+permissions:
+  contents: read
+  actions: write              # בשביל השלב האחרון ששומר על התזמון פעיל
+
+concurrency:
+  group: market-summary
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: בדיקת תזמון (קיץ/חורף)
+        id: gate
+        env:
+          TRIGGER_SCHEDULE: ${{ github.event.schedule }}
+        run: python3 market_bot.py --gate
+
+      - uses: actions/setup-python@v7
+        if: steps.gate.outputs.run == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: התקנות
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          pip install -U -r requirements.txt
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-color-emoji
+          python -m playwright install --with-deps chromium
+
+      - name: בניית התמונה ושליחה לדיסקורד
+        if: steps.gate.outputs.run == 'true'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TRIGGER_SCHEDULE: ${{ github.event.schedule }}
+        run: python market_bot.py
+
+      - name: שמירת עותק של התמונה (7 ימים)
+        if: always() && steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: market-summary
+          path: market_summary.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: הודעה לדיסקורד אם משהו נכשל
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 -c "import json,os;print(json.dumps({'content':'⚠️ בוט סיכום השוק נכשל היום. פרטים: '+os.environ['RUN_URL']}))" > msg.json
+          curl -s -H "Content-Type: application/json" -d @msg.json "$DISCORD_WEBHOOK_URL"
+
+      - name: שמירה על התזמון פעיל
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/market-summary.yml/enable"
