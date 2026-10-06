@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+$font_css
+<style>
+  :root {
+    --green: #4ade80;
+    --red: #f26464;
+    --orange: #fb923c;
+    --text: #f3f6f5;
+    --muted: #93a3a0;
+    --line: rgba(255, 255, 255, .07);
+    --panel: rgba(0, 0, 0, .22);
+    --panel-border: rgba(255, 255, 255, .07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0b1514;
+    font-family: 'Heebo', 'Noto Sans Hebrew', Arial, sans-serif, 'Noto Color Emoji';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- רקע לפי מצב השוק (לפי ה-S&P 500) ---------- */
+  #card { width: 980px; padding: 34px 26px 0; color: var(--text); direction: rtl; }
+  #card.mood-up {
+    background:
+      radial-gradient(120% 55% at 50% 0%, rgba(34, 78, 70, .55) 0%, rgba(34, 78, 70, 0) 70%),
+      linear-gradient(180deg, #112624 0%, #0d1c1b 55%, #0a1615 100%);
+  }
+  #card.mood-down {
+    background:
+      radial-gradient(120% 55% at 50% 0%, rgba(96, 30, 36, .55) 0%, rgba(96, 30, 36, 0) 70%),
+      linear-gradient(180deg, #2a1416 0%, #1d0e10 55%, #150a0c 100%);
+  }
+  #card.mood-flat {
+    background:
+      radial-gradient(120% 55% at 50% 0%, rgba(45, 62, 84, .55) 0%, rgba(45, 62, 84, 0) 70%),
+      linear-gradient(180deg, #18212b 0%, #121921 55%, #0d1218 100%);
+  }
+
+  .up   { color: var(--green); }
+  .down { color: var(--red); }
+  .flat { color: var(--muted); }
+  .num  { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+
+  /* ---------- כותרת ---------- */
+  .top { display: flex; justify-content: space-between; align-items: center;
+         font-size: 15px; font-weight: 700; color: var(--muted); }
+  .top b { color: var(--text); font-weight: 800; }
+  h1 { font-size: 46px; font-weight: 900; line-height: 1.15; letter-spacing: -.5px;
+       margin: 14px 0 26px; }
+
+  /* ---------- הסיפור של היום ---------- */
+  .story { background: var(--panel); border: 1px solid var(--panel-border);
+           border-radius: 18px; padding: 24px 28px; margin-bottom: 22px; }
+  .story-meta { font-size: 14px; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
+  .story-text { font-size: 24px; line-height: 1.55; font-weight: 500; }
+  .story[dir="ltr"] { text-align: left; }
+  .story[dir="ltr"] .story-text { font-weight: 600; font-size: 25px; line-height: 1.45; }
+
+  /* ---------- עולות / יורדות ---------- */
+  .movers { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--panel-border);
+           border-radius: 18px; padding: 22px 22px 6px; }
+  .panel h2 { font-size: 18px; font-weight: 800; display: flex; align-items: center;
+              gap: 9px; margin-bottom: 4px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .dot.up { background: var(--green); }
+  .dot.down { background: var(--red); }
+  .row { display: flex; justify-content: space-between; align-items: center;
+         padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: none; }
+  .sym { font-size: 27px; font-weight: 800; letter-spacing: .2px; }
+  .tag { font-size: 13px; font-weight: 500; color: var(--muted); margin-inline-start: 9px; }
+  .pct { font-size: 27px; font-weight: 800; direction: ltr; }
+
+  /* ---------- פס ה-VIX ---------- */
+  .vix { border: 1px solid; border-radius: 16px; padding: 20px 20px; text-align: center;
+         font-weight: 800; margin-bottom: 20px; line-height: 1.4; }
+  .vix.calm  { background: rgba(74, 222, 128, .09); border-color: rgba(74, 222, 128, .28);
+               color: var(--green); font-size: 19px; }
+  .vix.fear  { background: rgba(251, 146, 60, .13); border-color: rgba(251, 146, 60, .5);
+               color: var(--orange); padding: 22px 20px; }
+  .vix.panic { background: rgba(242, 100, 100, .17); border-color: rgba(242, 100, 100, .6);
+               color: #ff7b7b; padding: 24px 20px; }
+  .vix .l1 { font-size: 32px; font-weight: 900; }
+  .vix .l2 { font-size: 26px; }
+  .vix .l3 { font-size: 22px; color: var(--text); opacity: .9; margin-top: 2px; }
+
+  /* ---------- מדדים ---------- */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+           direction: ltr; margin-bottom: 26px; }
+  .tile { background: rgba(0, 0, 0, .28); border: 1px solid var(--panel-border);
+          border-radius: 14px; padding: 22px 8px 20px; text-align: center; }
+  .t-label { font-size: 17px; font-weight: 800; display: flex; justify-content: center;
+             align-items: baseline; gap: 7px; }
+  .t-tag { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .t-val { font-size: 37px; font-weight: 800; letter-spacing: -.5px; margin: 10px 0 8px; }
+  .t-chg { font-size: 18px; font-weight: 700; }
+
+  /* ---------- תחתית ---------- */
+  .foot { border-top: 1px solid var(--line); margin: 0 -26px; padding: 22px 36px 26px;
+          direction: ltr; font-size: 13px; font-weight: 800; color: var(--muted);
+          letter-spacing: .3px; }
+</style>
+</head>
+<body>
+<div id="card" class="mood-$mood">
+
+  <div class="top">
+    <span>הסיפור של היום</span>
+    <span>עולות ברשימה: <b class="num">$up_count</b></span>
+  </div>
+
+  <h1>$title_html</h1>
+
+  <div class="story" dir="$story_dir">
+    $story_meta_html
+    <div class="story-text">$story_html</div>
+  </div>
+
+  <div class="movers">
+    <div class="panel">
+      <h2><span class="dot up"></span>$gainers_title</h2>
+      $gainers_rows
+    </div>
+    <div class="panel">
+      <h2><span class="dot down"></span>$losers_title</h2>
+      $losers_rows
+    </div>
+  </div>
+
+  $vix_html
+
+  <div class="tiles">
+    $tiles_html
+  </div>
+
+  <div class="foot">DATA: YAHOO FINANCE</div>
+</div>
+</body>
+</html>
