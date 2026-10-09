@@ -30,11 +30,14 @@ from zoneinfo import ZoneInfo
 
 SEND_HOUR_IL = 17           # שעת השליחה בשעון ישראל
 SEND_MINUTE_IL = 0
-MAX_LATE_HOURS = 3          # אם GitHub איחר יותר מזה – לא שולחים באותו יום
+MAX_LATE_HOURS = 6          # אם GitHub איחר יותר מזה – לא שולחים באותו יום
 
 # חייב להתאים בדיוק לשורות ה-cron בקובץ .github/workflows/market-summary.yml
-CRON_SUMMER = "20 13 * * 1-5"   # שעון קיץ בישראל (UTC+3) → מתעורר ב-16:20
-CRON_WINTER = "20 14 * * 1-5"   # שעון חורף בישראל (UTC+2) → מתעורר ב-16:20מתעורר ב-16:00
+CRON_SUMMER = "17 12 * * 1-5"   # שעון קיץ בישראל (UTC+3) → מתעורר ב-15:17
+CRON_WINTER = "17 13 * * 1-5"   # שעון חורף בישראל (UTC+2) → מתעורר ב-15:17
+# מצב בדיקה: ריצה כל שעתיים ששולחת מיד (בלי המתנה ל-17:00 ובלי בדיקת בורסה פתוחה).
+# כדי לבטל – למחוק את שורת ה-cron הזו מה-yml.
+CRON_TEST = "7 */2 * * *"
 # הרשימה שלך: טיקר → תגית קטנה שמופיעה ליד השם ("" = בלי תגית)
 WATCHLIST = {
     "NVDA": "שבבים",
@@ -138,6 +141,9 @@ def gate() -> bool:
     sched = os.environ.get("TRIGGER_SCHEDULE", "").strip()
     if not sched:
         print("הרצה ידנית – ממשיכים מיד.")
+        return True
+    if sched == CRON_TEST:
+        print("הרצת בדיקה – ממשיכים מיד.")
         return True
     exp = expected_cron(dt.datetime.now(dt.timezone.utc))
     if sched == exp:
@@ -607,7 +613,7 @@ def main() -> None:
     if args.demo:
         quotes, headline = demo_data(args.demo)
     else:
-        scheduled = bool(os.environ.get("TRIGGER_SCHEDULE", "").strip())
+        scheduled = os.environ.get("TRIGGER_SCHEDULE", "").strip() not in ("", CRON_TEST)
         if scheduled and not wait_until_send_time():
             return
 
