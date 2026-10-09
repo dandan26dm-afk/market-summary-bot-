@@ -28,16 +28,7 @@ from zoneinfo import ZoneInfo
 #                      הגדרות – כאן משנים דברים
 # =====================================================================
 
-SEND_HOUR_IL = 17           # שעת השליחה בשעון ישראל
-SEND_MINUTE_IL = 0
-MAX_LATE_HOURS = 6          # אם GitHub איחר יותר מזה – לא שולחים באותו יום
-
-# חייב להתאים בדיוק לשורות ה-cron בקובץ .github/workflows/market-summary.yml
-CRON_SUMMER = "17 12 * * 1-5"   # שעון קיץ בישראל (UTC+3) → מתעורר ב-15:17
-CRON_WINTER = "17 13 * * 1-5"   # שעון חורף בישראל (UTC+2) → מתעורר ב-15:17
-# מצב בדיקה: ריצה כל שעתיים ששולחת מיד (בלי המתנה ל-17:00 ובלי בדיקת בורסה פתוחה).
-# כדי לבטל – למחוק את שורת ה-cron הזו מה-yml.
-CRON_TEST = "7 */2 * * *"
+# שעת השליחה (17:00 שעון ישראל) נקבעת ב-.github/workflows/market-summary.yml
 # הרשימה שלך: טיקר → תגית קטנה שמופיעה ליד השם ("" = בלי תגית)
 WATCHLIST = {
     "NVDA": "שבבים",
@@ -125,49 +116,6 @@ class Headline:
     provider: str
     url: str | None
     published: dt.datetime | None
-
-
-# ---------------------------------------------------------------------
-#  תזמון
-# ---------------------------------------------------------------------
-
-def expected_cron(now_utc: dt.datetime) -> str:
-    offset_h = now_utc.astimezone(IL).utcoffset().total_seconds() / 3600
-    return CRON_SUMMER if offset_h >= 3 else CRON_WINTER
-
-
-def gate() -> bool:
-    """GitHub מריץ שתי שורות cron (קיץ/חורף). רק אחת מהן מתאימה להיום."""
-    sched = os.environ.get("TRIGGER_SCHEDULE", "").strip()
-    if not sched:
-        print("הרצה ידנית – ממשיכים מיד.")
-        return True
-    if sched == CRON_TEST:
-        print("הרצת בדיקה – ממשיכים מיד.")
-        return True
-    exp = expected_cron(dt.datetime.now(dt.timezone.utc))
-    if sched == exp:
-        print(f"ה-cron '{sched}' מתאים לשעון הנוכחי בישראל – ממשיכים.")
-        return True
-    print(f"ה-cron '{sched}' לא מתאים לעונה הנוכחית (מצופה '{exp}') – מדלגים.")
-    return False
-
-
-def wait_until_send_time() -> bool:
-    now = dt.datetime.now(IL)
-    target = now.replace(hour=SEND_HOUR_IL, minute=SEND_MINUTE_IL, second=0, microsecond=0)
-    if now < target:
-        secs = (target - now).total_seconds()
-        print(f"ממתינים {secs / 60:.1f} דקות עד {target:%H:%M} שעון ישראל...")
-        time.sleep(secs)
-        return True
-    late_h = (now - target).total_seconds() / 3600
-    if late_h > MAX_LATE_HOURS:
-        print(f"GitHub איחר ב-{late_h:.1f} שעות – לא שולחים היום.")
-        return False
-    if late_h > 0.02:
-        print(f"GitHub איחר ב-{late_h * 60:.0f} דקות – שולחים עכשיו.")
-    return True
 
 
 # ---------------------------------------------------------------------
@@ -596,26 +544,16 @@ def demo_data(name: str) -> tuple[dict[str, Quote], Headline]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--gate", action="store_true", help="רק לבדוק אם ההרצה המתוזמנת רלוונטית")
     ap.add_argument("--no-send", action="store_true", help="לשמור תמונה בלי לשלוח לדיסקורד")
     ap.add_argument("--demo", choices=list(DEMO), help="נתוני דוגמה לתצוגה מקדימה")
     ap.add_argument("--out", default="market_summary.png")
     args = ap.parse_args()
 
-    if args.gate:
-        ok = gate()
-        if os.environ.get("GITHUB_OUTPUT"):
-            with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-                f.write(f"run={'true' if ok else 'false'}\n")
-        return
-
     out = Path(args.out)
     if args.demo:
         quotes, headline = demo_data(args.demo)
     else:
-        scheduled = os.environ.get("TRIGGER_SCHEDULE", "").strip() not in ("", CRON_TEST)
-        if scheduled and not wait_until_send_time():
-            return
+        scheduled = bool(os.environ.get("TRIGGER_SCHEDULE", "").strip())
 
         symbols = list(WATCHLIST) + [m[1] for m in MACRO]
         print("מושכים נתונים מ-Yahoo Finance...")
