@@ -5,6 +5,7 @@ on:
     # 17:00 שעון ישראל, ימים שני-שישי. GitHub מטפל בעצמו בשעון קיץ/חורף.
     - cron: "0 17 * * 1-5"
       timezone: "Asia/Jerusalem"
+    - cron: "7 * * * *"       # בדיקה זמנית: כל שעה, שולח תמיד (למחוק בסוף)
   workflow_dispatch:          # כפתור "Run workflow" להרצה ידנית ובדיקה
 permissions:
   contents: read
@@ -36,7 +37,8 @@ jobs:
       - name: בניית התמונה ושליחה לדיסקורד
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          TRIGGER_SCHEDULE: ${{ github.event.schedule }}
+          # ריצת הבדיקה (כל שעה) מתנהגת כמו ריצה ידנית: שולחת תמיד, גם כשהבורסה סגורה
+          TRIGGER_SCHEDULE: ${{ github.event.schedule != '7 * * * *' && github.event.schedule || '' }}
         run: python market_bot.py
 
       - name: שמירת עותק של התמונה (7 ימים)
