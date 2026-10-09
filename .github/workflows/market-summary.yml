@@ -2,12 +2,9 @@ name: סיכום שוק יומי לדיסקורד
 
 on:
   schedule:
-    # GitHub עובד לפי UTC. שתי השורות מכסות שעון קיץ ושעון חורף בישראל.
-    # שתיהן מתעוררות ב-15:17 שעון ישראל, והסקריפט ממתין ושולח בדיוק ב-17:00.
-    # (אם משנים כאן – לשנות גם CRON_SUMMER / CRON_WINTER ב-market_bot.py)
-    - cron: "17 12 * * 1-5"   # שעון קיץ בישראל (UTC+3)
-    - cron: "17 13 * * 1-5"   # שעון חורף בישראל (UTC+2)
-    - cron: "7 */2 * * *"     # בדיקה זמנית: כל שעתיים, שולח מיד (למחוק בסוף)
+    # 17:00 שעון ישראל, ימים שני-שישי. GitHub מטפל בעצמו בשעון קיץ/חורף.
+    - cron: "0 17 * * 1-5"
+      timezone: "Asia/Jerusalem"
   workflow_dispatch:          # כפתור "Run workflow" להרצה ידנית ובדיקה
 permissions:
   contents: read
@@ -20,24 +17,16 @@ concurrency:
 jobs:
   send:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
-      - name: בדיקת תזמון (קיץ/חורף)
-        id: gate
-        env:
-          TRIGGER_SCHEDULE: ${{ github.event.schedule }}
-        run: python3 market_bot.py --gate
-
       - uses: actions/setup-python@v7
-        if: steps.gate.outputs.run == 'true'
         with:
           python-version: "3.12"
           cache: pip
 
       - name: התקנות
-        if: steps.gate.outputs.run == 'true'
         run: |
           pip install -U -r requirements.txt
           sudo apt-get update -qq
@@ -45,14 +34,13 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: בניית התמונה ושליחה לדיסקורד
-        if: steps.gate.outputs.run == 'true'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           TRIGGER_SCHEDULE: ${{ github.event.schedule }}
         run: python market_bot.py
 
       - name: שמירת עותק של התמונה (7 ימים)
-        if: always() && steps.gate.outputs.run == 'true'
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: market-summary
