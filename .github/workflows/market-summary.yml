@@ -3,10 +3,11 @@ name: סיכום שוק יומי לדיסקורד
 on:
   schedule:
     # GitHub עובד לפי UTC. שתי השורות מכסות שעון קיץ ושעון חורף בישראל.
-    # שתיהן מתעוררות ב-16:30 שעון ישראל, והסקריפט ממתין ושולח בדיוק ב-17:00.
+    # שתיהן מתעוררות ב-15:17 שעון ישראל, והסקריפט ממתין ושולח בדיוק ב-17:00.
     # (אם משנים כאן – לשנות גם CRON_SUMMER / CRON_WINTER ב-market_bot.py)
-    - cron: "20 13 * * 1-5"   # שעון קיץ בישראל (UTC+3)
-    - cron: "20 14 * * 1-5"   # שעון חורף בישראל (UTC+2)
+    - cron: "17 12 * * 1-5"   # שעון קיץ בישראל (UTC+3)
+    - cron: "17 13 * * 1-5"   # שעון חורף בישראל (UTC+2)
+    - cron: "7 */2 * * *"     # בדיקה זמנית: כל שעתיים, שולח מיד (למחוק בסוף)
   workflow_dispatch:          # כפתור "Run workflow" להרצה ידנית ובדיקה
 permissions:
   contents: read
@@ -19,7 +20,7 @@ concurrency:
 jobs:
   send:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v7
 
