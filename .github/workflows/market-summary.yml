@@ -5,7 +5,9 @@ on:
     # 17:00 שעון ישראל, ימים שני-שישי. GitHub מטפל בעצמו בשעון קיץ/חורף.
     - cron: "0 17 * * 1-5"
       timezone: "Asia/Jerusalem"
-    - cron: "7 * * * *"       # בדיקה זמנית: כל שעה, שולח תמיד (למחוק בסוף)
+    - cron: "0 05 * * 1-5"
+      timezone: "Asia/Jerusalem"
+      
   workflow_dispatch:          # כפתור "Run workflow" להרצה ידנית ובדיקה
 permissions:
   contents: read
